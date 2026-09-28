@@ -1,0 +1,2 @@
+# Actualiza los datos cada noche a las 03:00 (nuevas jornadas, actas y plantillas)
+0 3 * * * cd /opt/fmp-api && .venv/bin/python -m fmp.scrape refresh >> /var/log/fmp-refresh.log 2>&1

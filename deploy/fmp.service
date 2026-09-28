@@ -1,0 +1,14 @@
+# /etc/systemd/system/fmp.service
+[Unit]
+Description=fmp - API y web de la liga FMP
+After=network.target
+
+[Service]
+User=fmp
+WorkingDirectory=/opt/fmp-api
+EnvironmentFile=/opt/fmp-api/.env
+ExecStart=/opt/fmp-api/.venv/bin/python -m uvicorn fmp.api:app --host 127.0.0.1 --port 8000
+Restart=always
+
+[Install]
+WantedBy=multi-user.target
