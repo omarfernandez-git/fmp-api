@@ -151,6 +151,12 @@ def equipo(cid: int | None = None, con=Depends(_con), user=Depends(current_user)
     E["distribucion"] = advanced.distribucion_sets(con, ids, cids)
     E["puntos_jornada"] = advanced.puntos_por_jornada(con, ids, cids)
     E["temporadas"] = {t["id"]: t for t in stats.temporadas(con)}
+    # Elo de los jugadores del equipo (calculado con todos los partidos del grupo, todas las temporadas)
+    elo = advanced.elo_ratings(con)
+    E["elo"] = [{"jugador": j["jugador"], "key": norm(j["jugador"]), "elo": e["elo"], "hist": e["hist"], "pj": e["pj"], "pg": e["pg"],
+                 "max": max(e["hist"]) if e["hist"] else e["elo"], "min": min(e["hist"]) if e["hist"] else e["elo"]}
+                for j in E["jugadores"] if (e := elo.get(norm(j["jugador"])))]
+    E["elo"].sort(key=lambda x: -x["elo"])
     return E
 
 
