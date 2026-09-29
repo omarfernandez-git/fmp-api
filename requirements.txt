@@ -3,6 +3,8 @@ beautifulsoup4
 lxml
 fastapi
 uvicorn[standard]
-jinja2
+pydantic
 python-dotenv
 python-multipart
+bcrypt
+PyJWT
