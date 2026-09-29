@@ -309,9 +309,11 @@ def rivales(cid: int, con=Depends(_con), user=Depends(current_user)):
         h = [x for x in hist_propio if same_team(x["rival"], r["nombre"])]
         r["h2h"] = {"pj": len(h), "pg": sum(1 for x in h if x["gano"]), "encuentros": h}
     propio = elo_de_equipo(eq["nombre"])
+    nombres_grupo = [r["nombre"] for r in rv] + [eq["nombre"]]
+    elo_grupo = [v for v in elo.values() if v["pj"] >= 3 and any(same_team(v["equipo"], n) for n in nombres_grupo)]
     return {"temporada": t, "equipo": eq, "rivales": rv,
             "propio": {"nombre": eq["nombre"], "elo_jugadores": propio, "elo_resumen": resumen_elo(propio)},
-            "elo_grupo": [v for v in elo.values() if v["pj"] >= 3][:60]}
+            "elo_grupo": elo_grupo[:60]}
 
 
 @app.get("/api/alineacion/{cid}/{jornada}")
