@@ -21,7 +21,7 @@ cors = [o.strip() for o in os.getenv("FMP_CORS", "").split(",") if o.strip()]
 if cors:
     app.add_middleware(CORSMiddleware, allow_origins=cors, allow_methods=["*"], allow_headers=["*"])
 _refresh = {"running": False, "msg": "", "at": None}
-DIST = Path(os.getenv("FMP_DIST", str(ROOT.parent / "fmp" / "dist" / "frontend" / "browser")))
+DIST = Path(os.getenv("FMP_DIST") or str(ROOT.parent / "fmp" / "dist" / "frontend" / "browser"))
 
 
 # ---------------- auth ----------------
