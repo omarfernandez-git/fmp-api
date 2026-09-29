@@ -65,7 +65,7 @@ CREATE INDEX IF NOT EXISTS ix_partido_enc ON partido(encuentro_id);
 
 def connect() -> sqlite3.Connection:
     DB_PATH.parent.mkdir(parents=True, exist_ok=True)
-    con = sqlite3.connect(DB_PATH, timeout=30)
+    con = sqlite3.connect(DB_PATH, timeout=30, check_same_thread=False)
     con.row_factory = sqlite3.Row
     con.execute("PRAGMA journal_mode=WAL")
     con.execute("PRAGMA foreign_keys=ON")
