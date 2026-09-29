@@ -206,17 +206,34 @@ def rivales(cid: int, con=Depends(_con), user=Depends(current_user)):
     eq = stats.equipo_seguido(con, cid)
     elo = advanced.elo_ratings(con)
     rv = stats.rivales(con, t["grupo_id"], eq["id"])
+    hist_propio = advanced.equipo_stats(con, _ids(con))["encuentros"]["encuentros"]
+
+    def elo_de_equipo(nombre):
+        """Jugadores cuyo último equipo en las actas es este (sirve aunque la plantilla no esté publicada)."""
+        js = [{"jugador": v["jugador"], "key": k, "elo": v["elo"], "pj": v["pj"], "pg": v["pg"], "hist": v["hist"]}
+              for k, v in elo.items() if norm(v["equipo"]).replace(" ", "") == norm(nombre).replace(" ", "")]
+        js.sort(key=lambda x: -x["elo"])
+        return js
+
+    def resumen_elo(js):
+        top = [j["elo"] for j in js[:8]]
+        return {"medio": round(sum(top) / len(top)) if top else None, "max": max((j["elo"] for j in js), default=None),
+                "min": min((j["elo"] for j in js), default=None), "n": len(js)}
+
     for r in rv:
         for j in r["plantilla"]:
             e = elo.get(norm(j["nombre_completo"]))
             j["elo"] = e["elo"] if e else None
             j["elo_pj"] = e["pj"] if e else 0
-        elos = sorted((j["elo"] for j in r["plantilla"] if j["elo"]), reverse=True)[:8]
-        r["elo_medio"] = round(sum(elos) / len(elos)) if elos else None
-        # historial contra nosotros
-        h = [x for x in advanced.equipo_stats(con, _ids(con))["encuentros"]["encuentros"] if norm(x["rival"]) == norm(r["nombre"])]
+        r["elo_jugadores"] = elo_de_equipo(r["nombre"])
+        # si no hay plantilla, completamos con los jugadores vistos en actas de ese equipo
+        r["elo_resumen"] = resumen_elo(r["elo_jugadores"])
+        r["elo_medio"] = r["elo_resumen"]["medio"]
+        h = [x for x in hist_propio if norm(x["rival"]) == norm(r["nombre"])]
         r["h2h"] = {"pj": len(h), "pg": sum(1 for x in h if x["gano"]), "encuentros": h}
+    propio = elo_de_equipo(eq["nombre"])
     return {"temporada": t, "equipo": eq, "rivales": rv,
+            "propio": {"nombre": eq["nombre"], "elo_jugadores": propio, "elo_resumen": resumen_elo(propio)},
             "elo_grupo": [v for v in elo.values() if v["pj"] >= 3][:60]}
 
 
