@@ -34,12 +34,13 @@ python -m fmp.auth passwd tu@email nueva  # cambia una contraseña · list · di
 - En producción ponlo detrás de nginx con TLS (`deploy/nginx.conf`) y deja `FMP_CORS` vacío.
 - Las credenciales de la FMP y el secreto viven solo en `.env` (ignorado por git).
 
-## Despliegue
+## Despliegue en apache02 (mv.greensysit.net)
 
-- **systemd + nginx**: `deploy/fmp.service`, `deploy/nginx.conf`, `deploy/cron.txt` (actualización nocturna).
-- **Docker**: compila el frontend (`cd ../fmp && npm run build`), copia `dist/frontend/browser` a `./web` y
-  `docker build -t fmp . && docker run -p 8000:8000 -v fmp-data:/app/data --env-file .env fmp`.
-- La API sirve la web Angular desde `FMP_DIST` (por defecto `../fmp/dist/frontend/browser`).
+API en `/opt/fmp` (uvicorn en 127.0.0.1:8000, systemd) y web Angular estática en `/var/www/html/fmp` servida por
+Apache, que hace de proxy de `/api`. Pasos en el README del repositorio `fmp` (sección "Despliegue") y ficheros en
+`deploy/`: `apache-mv.greensysit.net.conf`, `fmp.service`, `cron.txt` y `deploy.sh` (compila y sube por rsync).
+
+Actualizar tras un cambio: `deploy/deploy.sh apache02` desde este repositorio (con `../fmp` al lado).
 
 ## Qué se descarga
 

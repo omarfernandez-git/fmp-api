@@ -1,2 +1,2 @@
-# Actualiza los datos cada noche a las 03:00 (nuevas jornadas, actas y plantillas)
-0 3 * * * cd /opt/fmp-api && .venv/bin/python -m fmp.scrape refresh >> /var/log/fmp-refresh.log 2>&1
+# /etc/cron.d/fmp · actualiza los datos cada noche a las 03:15 (nuevas jornadas, actas, plantillas y área privada)
+15 3 * * * www-data cd /opt/fmp && .venv/bin/python -m fmp.scrape refresh >> /opt/fmp/data/refresh.log 2>&1

@@ -1,14 +1,16 @@
-# /etc/systemd/system/fmp.service
+# /etc/systemd/system/fmp.service  ·  API en /opt/fmp, escuchando solo en localhost (Apache hace de proxy)
 [Unit]
-Description=fmp - API y web de la liga FMP
+Description=fmp - API de la liga FMP (MV Padel Cercedilla)
 After=network.target
 
 [Service]
-User=fmp
-WorkingDirectory=/opt/fmp-api
-EnvironmentFile=/opt/fmp-api/.env
-ExecStart=/opt/fmp-api/.venv/bin/python -m uvicorn fmp.api:app --host 127.0.0.1 --port 8000
+User=www-data
+Group=www-data
+WorkingDirectory=/opt/fmp
+EnvironmentFile=/opt/fmp/.env
+ExecStart=/opt/fmp/.venv/bin/python -m uvicorn fmp.api:app --host 127.0.0.1 --port 8000
 Restart=always
+RestartSec=3
 
 [Install]
 WantedBy=multi-user.target
