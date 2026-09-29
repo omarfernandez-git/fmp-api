@@ -68,6 +68,83 @@ def change_password(body: Passwd, user=Depends(current_user)):
     return {"ok": True}
 
 
+# ---------------- administración de usuarios ----------------
+def admin_user(user=Depends(current_user)) -> dict:
+    if not user.get("admin"):
+        raise HTTPException(403, "Solo para administradores")
+    return user
+
+
+class NuevoUsuario(BaseModel):
+    email: str
+    nombre: str = ""
+    password: str | None = None
+    admin: bool = False
+
+
+class CambioUsuario(BaseModel):
+    nombre: str | None = None
+    activo: bool | None = None
+    admin: bool | None = None
+    reset_password: bool = False
+    password: str | None = None
+
+
+@app.get("/api/admin/usuarios")
+def admin_listar(user=Depends(admin_user)):
+    return auth.list_users()
+
+
+@app.post("/api/admin/usuarios")
+def admin_crear(body: NuevoUsuario, user=Depends(admin_user)):
+    email = body.email.strip().lower()
+    if "@" not in email:
+        raise HTTPException(400, "Email no válido")
+    con = connect()
+    try:
+        if con.execute("SELECT 1 FROM usuario WHERE email=?", (email,)).fetchone():
+            raise HTTPException(400, "Ya existe un usuario con ese email")
+    finally:
+        con.close()
+    if body.password and len(body.password) < 8:
+        raise HTTPException(400, "La contraseña debe tener al menos 8 caracteres")
+    pw = auth.add_user(email, body.password, body.nombre or None, body.admin)
+    return {"email": email, "password": pw, "generada": not body.password}
+
+
+@app.post("/api/admin/usuarios/{email}")
+def admin_cambiar(email: str, body: CambioUsuario, user=Depends(admin_user)):
+    email = email.strip().lower()
+    res = {"email": email}
+    with tx() as con:
+        u = con.execute("SELECT * FROM usuario WHERE email=?", (email,)).fetchone()
+        if not u:
+            raise HTTPException(404, "Usuario no encontrado")
+        if email == user["email"] and (body.activo is False or body.admin is False):
+            raise HTTPException(400, "No puedes desactivarte ni quitarte el permiso de administrador a ti mismo")
+        if body.nombre is not None:
+            con.execute("UPDATE usuario SET nombre=? WHERE email=?", (body.nombre, email))
+        if body.activo is not None:
+            con.execute("UPDATE usuario SET activo=? WHERE email=?", (1 if body.activo else 0, email))
+        if body.admin is not None:
+            con.execute("UPDATE usuario SET admin=? WHERE email=?", (1 if body.admin else 0, email))
+    if body.reset_password or body.password:
+        if body.password and len(body.password) < 8:
+            raise HTTPException(400, "La contraseña debe tener al menos 8 caracteres")
+        res["password"] = auth.add_user(email, body.password)
+    return res
+
+
+@app.delete("/api/admin/usuarios/{email}")
+def admin_borrar(email: str, user=Depends(admin_user)):
+    email = email.strip().lower()
+    if email == user["email"]:
+        raise HTTPException(400, "No puedes borrar tu propio usuario")
+    with tx() as con:
+        con.execute("DELETE FROM usuario WHERE email=?", (email,))
+    return {"ok": True}
+
+
 # ---------------- helpers ----------------
 def _con():
     con = connect()

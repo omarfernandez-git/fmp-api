@@ -70,7 +70,16 @@ def connect() -> sqlite3.Connection:
     con.execute("PRAGMA journal_mode=WAL")
     con.execute("PRAGMA foreign_keys=ON")
     con.executescript(SCHEMA)
+    _migrate(con)
     return con
+
+
+def _migrate(con):
+    """Cambios de esquema sobre bases ya creadas."""
+    cols = {r[1] for r in con.execute("PRAGMA table_info(usuario)")}
+    if "admin" not in cols:
+        con.execute("ALTER TABLE usuario ADD COLUMN admin INTEGER DEFAULT 0")
+        con.commit()
 
 
 @contextmanager

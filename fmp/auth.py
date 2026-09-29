@@ -5,6 +5,7 @@ CLI:
   python -m fmp.auth passwd <email> [contraseña]  # cambia la contraseña
   python -m fmp.auth list
   python -m fmp.auth disable <email> | enable <email>
+  python -m fmp.auth admin <email> [0|1]         # da o quita permisos de administrador
 """
 import os
 import secrets
@@ -55,7 +56,7 @@ def authenticate(email: str, pw: str):
         if not u or not check_password(pw, u["password_hash"]):
             return None
         con.execute("UPDATE usuario SET ultimo_acceso=? WHERE email=?", (datetime.now().isoformat(timespec="seconds"), email))
-        return {"email": u["email"], "nombre": u["nombre"]}
+        return {"email": u["email"], "nombre": u["nombre"], "admin": bool(u["admin"])}
 
 
 def create_token(user: dict) -> str:
@@ -71,20 +72,32 @@ def verify_token(token: str):
         return None
     con = connect()
     try:
-        u = con.execute("SELECT email, nombre FROM usuario WHERE email=? AND activo=1", (data["sub"],)).fetchone()
-        return dict(u) if u else None
+        u = con.execute("SELECT email, nombre, admin FROM usuario WHERE email=? AND activo=1", (data["sub"],)).fetchone()
+        return {"email": u["email"], "nombre": u["nombre"], "admin": bool(u["admin"])} if u else None
     finally:
         con.close()
 
 
-def add_user(email: str, pw: str | None = None, nombre: str | None = None) -> str:
+def add_user(email: str, pw: str | None = None, nombre: str | None = None, admin: bool | None = None) -> str:
+    """Crea el usuario o cambia su contraseña. Devuelve la contraseña (generada si no se indica)."""
     email = email.strip().lower()
-    pw = pw or secrets.token_urlsafe(12)
+    pw = pw or secrets.token_urlsafe(9)
     with tx() as con:
-        con.execute("""INSERT INTO usuario(email,password_hash,nombre,activo,creado) VALUES (?,?,?,1,?)
-                       ON CONFLICT(email) DO UPDATE SET password_hash=excluded.password_hash, activo=1""",
-                    (email, hash_password(pw), nombre or email.split("@")[0], datetime.now().isoformat(timespec="seconds")))
+        con.execute("""INSERT INTO usuario(email,password_hash,nombre,activo,creado,admin) VALUES (?,?,?,1,?,?)
+                       ON CONFLICT(email) DO UPDATE SET password_hash=excluded.password_hash, activo=1,
+                       nombre=COALESCE(NULLIF(excluded.nombre,''), usuario.nombre)""",
+                    (email, hash_password(pw), nombre or email.split("@")[0], datetime.now().isoformat(timespec="seconds"), 1 if admin else 0))
+        if admin is not None:
+            con.execute("UPDATE usuario SET admin=? WHERE email=?", (1 if admin else 0, email))
     return pw
+
+
+def list_users():
+    con = connect()
+    try:
+        return [dict(u) for u in con.execute("SELECT email, nombre, activo, admin, creado, ultimo_acceso FROM usuario ORDER BY creado")]
+    finally:
+        con.close()
 
 
 def main(argv):
@@ -98,6 +111,10 @@ def main(argv):
         con = connect()
         for u in con.execute("SELECT email,nombre,activo,creado,ultimo_acceso FROM usuario"):
             print(dict(u))
+    elif cmd == "admin":  # admin <email> [0|1]
+        with tx() as con:
+            con.execute("UPDATE usuario SET admin=? WHERE email=?", (int(args[1]) if len(args) > 1 else 1, args[0].lower()))
+        print("ok")
     elif cmd in ("disable", "enable"):
         with tx() as con:
             con.execute("UPDATE usuario SET activo=? WHERE email=?", (1 if cmd == "enable" else 0, args[0].lower()))
