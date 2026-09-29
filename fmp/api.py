@@ -12,7 +12,7 @@ from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel
 
 from . import advanced, auth, lineup, stats
-from .config import FMP_TEAM, ROOT, norm
+from .config import FMP_TEAM, ROOT, norm, same_team
 from .db import connect, tx
 
 log = logging.getLogger("fmp.api")
@@ -211,7 +211,7 @@ def rivales(cid: int, con=Depends(_con), user=Depends(current_user)):
     def elo_de_equipo(nombre):
         """Jugadores cuyo último equipo en las actas es este (sirve aunque la plantilla no esté publicada)."""
         js = [{"jugador": v["jugador"], "key": k, "elo": v["elo"], "pj": v["pj"], "pg": v["pg"], "hist": v["hist"]}
-              for k, v in elo.items() if norm(v["equipo"]).replace(" ", "") == norm(nombre).replace(" ", "")]
+              for k, v in elo.items() if same_team(v["equipo"], nombre)]
         js.sort(key=lambda x: -x["elo"])
         return js
 
@@ -229,7 +229,7 @@ def rivales(cid: int, con=Depends(_con), user=Depends(current_user)):
         # si no hay plantilla, completamos con los jugadores vistos en actas de ese equipo
         r["elo_resumen"] = resumen_elo(r["elo_jugadores"])
         r["elo_medio"] = r["elo_resumen"]["medio"]
-        h = [x for x in hist_propio if norm(x["rival"]) == norm(r["nombre"])]
+        h = [x for x in hist_propio if same_team(x["rival"], r["nombre"])]
         r["h2h"] = {"pj": len(h), "pg": sum(1 for x in h if x["gano"]), "encuentros": h}
     propio = elo_de_equipo(eq["nombre"])
     return {"temporada": t, "equipo": eq, "rivales": rv,

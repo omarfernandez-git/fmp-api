@@ -16,7 +16,7 @@ from datetime import datetime
 
 from . import parsers as P
 from .client import FMPClient
-from .config import FMP_TEAM, norm, team_matches
+from .config import FMP_TEAM, norm, same_team, team_matches
 from .db import tx
 
 log = logging.getLogger("fmp.scrape")
@@ -237,9 +237,36 @@ def find_team_groups(client: FMPClient, cats: list[dict], pattern=FMP_TEAM, use_
     return out
 
 
+def scrape_rivales(client: FMPClient, cid: int, seasons: list[int] | None, use_cache=True):
+    """Localiza a los rivales del grupo actual en las clasificaciones de temporadas anteriores y descarga esos grupos."""
+    with tx() as con:
+        eq = con.execute("SELECT * FROM equipo WHERE categoria_id=? AND seguido=1", (cid,)).fetchone()
+        rivales = [r["equipo"] for r in con.execute("SELECT equipo FROM clasificacion WHERE grupo_id=?", (eq["grupo_id"],))
+                   if not team_matches(r["equipo"])]
+        if seasons is None:
+            seasons = [r["id"] for r in con.execute("SELECT id FROM categoria WHERE id<? AND nombre LIKE '%eterano%' AND nombre NOT LIKE '%enior%' AND nombre NOT LIKE '%eteranas%' ORDER BY id DESC LIMIT 2", (cid,))]
+        hechos = {r["grupo_id"] for r in con.execute("SELECT grupo_id FROM encuentro GROUP BY grupo_id HAVING SUM(detalle_ok) > 0")}
+    log.info("rivales de %s: %s", eq["nombre"], rivales)
+    pendientes = []
+    for scid in seasons:
+        soup = client.soup(client.get(f"ligas_calendario.aspx?idCategoria={scid}"))
+        for v, gname, _ in P.parse_select(soup, P.DD_GRUPO):
+            gid = int(v)
+            if gid in hechos:
+                continue
+            nombres = [row["equipo"] for row in clasificacion(client, scid, gid)]
+            hits = [(r, n) for r in rivales for n in nombres if same_team(n, r)]
+            if hits:
+                log.info("  %s / %s: %s", scid, gname, ", ".join(f"{r} = {n}" for r, n in hits))
+                pendientes.append((scid, gid))
+    log.info("grupos a descargar: %s", pendientes)
+    for scid, gid in pendientes:
+        scrape_grupo(client, scid, gid, use_cache)
+
+
 def main(argv=None):
     ap = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
-    ap.add_argument("cmd", choices=["discover", "team", "grupo", "refresh", "equipo"])
+    ap.add_argument("cmd", choices=["discover", "team", "grupo", "refresh", "equipo", "rivales"])
     ap.add_argument("args", nargs="*")
     ap.add_argument("--no-cache", action="store_true", help="ignora la caché de HTML")
     ap.add_argument("--team", default=FMP_TEAM, help="patrón del equipo (por defecto FMP_TEAM)")
@@ -257,6 +284,10 @@ def main(argv=None):
                 save_categoria(con, c)
         for c in cats:
             print(c["id"], c["temporada"], c["nombre"], f"({len(c['grupos'])} grupos)")
+        return
+
+    if a.cmd == "rivales":  # rivales <idCategoria>: baja los grupos de temporadas anteriores donde jugaron los rivales actuales
+        scrape_rivales(client, int(a.args[0]), [int(x) for x in a.args[1:]] or None, use_cache)
         return
 
     if a.cmd == "equipo":  # añade/actualiza un equipo concreto: equipo <idCategoria> <idEquipo>
