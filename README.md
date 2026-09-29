@@ -21,6 +21,7 @@ Otros comandos:
 python -m fmp.scrape refresh              # vuelve a bajar la temporada actual (nuevas jornadas); también desde la web
 python -m fmp.scrape discover             # lista las ligas (idCategoria) que existen en la FMP
 python -m fmp.scrape grupo 135 619        # baja un grupo concreto
+python -m fmp.scrape rivales 142          # baja los grupos de las 2 temporadas anteriores donde jugaron los rivales actuales (para su Elo)
 python -m fmp.private                     # sincroniza plantilla oficial y puntos del simulador (área privada de delegado)
 python -m fmp.auth passwd tu@email nueva  # cambia una contraseña · list · disable · enable
 ```
@@ -51,7 +52,9 @@ python -m fmp.auth passwd tu@email nueva  # cambia una contraseña · list · di
 | `ligas_gestionEquipos.aspx` (privada) | `plantilla_privada` | plantilla oficial con licencias, fecha de nacimiento y estado |
 | `ligas_simulaActaT3.aspx` (privada) | `ranking_oficial` | puntos oficiales de ranking por jugador (cuando la liga está activa) |
 
-Se descargan todos los encuentros y plantillas del grupo (no solo los nuestros) para tener datos de rivales.
+Se descargan todos los encuentros y plantillas del grupo (no solo los nuestros) para tener datos de rivales, y con
+`scrape rivales` también los grupos anteriores de los rivales de la temporada actual. Los nombres de equipo se comparan de
+forma difusa entre temporadas (`config.same_team`: 'A LA PAR PADEL Y TENIS FUENCARRAL B' = 'FUENCARRAL ALAPAR B').
 Tablas propias de la app: `usuario`, `disponibilidad`, `alineacion`, `jugador_ajuste`.
 
 Temporadas del equipo (liga Veteranos):
