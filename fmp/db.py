@@ -2,7 +2,7 @@
 import sqlite3
 from contextlib import contextmanager
 
-from .config import DB_PATH
+from .config import DB_PATH, FMP_EXCLUIR_EQUIPOS
 
 SCHEMA = """
 CREATE TABLE IF NOT EXISTS categoria (
@@ -71,6 +71,10 @@ def connect() -> sqlite3.Connection:
     con.execute("PRAGMA foreign_keys=ON")
     con.executescript(SCHEMA)
     _migrate(con)
+    if FMP_EXCLUIR_EQUIPOS:  # equipos que casan con el nombre pero no son el nuestro (ver config)
+        con.execute(f"UPDATE equipo SET seguido=0 WHERE seguido=1 AND id IN ({','.join('?' * len(FMP_EXCLUIR_EQUIPOS))})",
+                    tuple(FMP_EXCLUIR_EQUIPOS))
+        con.commit()
     return con
 
 

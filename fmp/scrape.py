@@ -16,7 +16,7 @@ from datetime import datetime
 
 from . import parsers as P
 from .client import FMPClient
-from .config import FMP_TEAM, norm, same_team, team_matches
+from .config import FMP_EXCLUIR_EQUIPOS, FMP_TEAM, norm, same_team, team_matches
 from .db import tx
 
 log = logging.getLogger("fmp.scrape")
@@ -211,7 +211,7 @@ def scrape_equipo(client: FMPClient, con, cid: int, gid: int | None, eid: int, u
         sede=excluded.sede, direccion=excluded.direccion, pistas=excluded.pistas, delegado=excluded.delegado,
         delegado_aux=excluded.delegado_aux, seguido=excluded.seguido""",
                 (eid, cid, gid, eq["nombre"], eq["club"], eq["sede"], eq["direccion"], eq["pistas"],
-                 eq["delegado"], eq["delegado_aux"], 1 if team_matches(eq["nombre"]) else 0))
+                 eq["delegado"], eq["delegado_aux"], 1 if team_matches(eq["nombre"]) and eid not in FMP_EXCLUIR_EQUIPOS else 0))
     con.execute("DELETE FROM plantilla WHERE equipo_id=?", (eid,))
     for j in eq["jugadores"]:
         full = " ".join(x for x in (j["nombre"], j["apellido1"], j["apellido2"]) if x and x != "N/A")
@@ -221,7 +221,7 @@ def scrape_equipo(client: FMPClient, con, cid: int, gid: int | None, eid: int, u
                     (eid, j["jugador_id"], j["orden"], j["nombre"], j["apellido1"], j["apellido2"], full,
                      j["puntos"], j["pj"], j["pg"], j["pp"], j["sg"], j["sp"], j["color"]))
     log.info("  equipo %s %s: %d jugadores%s", eid, eq["nombre"], len(eq["jugadores"]),
-             "  <-- SEGUIDO" if team_matches(eq["nombre"]) else "")
+             "  <-- SEGUIDO" if team_matches(eq["nombre"]) and eid not in FMP_EXCLUIR_EQUIPOS else "")
     return eq
 
 

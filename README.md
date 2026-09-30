@@ -62,7 +62,7 @@ Temporadas del equipo (liga Veteranos):
 
 | Temporada | idCategoria | Grupo | idGrupo | idEquipo |
 |---|---|---|---|---|
-| 2023/24 | 124 | Quinta División B | 534 | 5154 |
+| 2023/24 | 124 | Quinta División B | 534 | 5154 (excluido con `FMP_EXCLUIR_EQUIPOS`: aún no era el equipo A) |
 | 2024/25 | 128 | Tercera División C | 575 | 6028 |
 | 2025/26 | 135 | Tercera División C | 619 | 6704 |
 | 2026/27 | 142 | Tercera División A | 665 | 6977 |

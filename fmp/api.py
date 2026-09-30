@@ -222,17 +222,24 @@ def encuentro(eid: int, con=Depends(_con), user=Depends(current_user)):
 @app.get("/api/equipo")
 def equipo(cid: int | None = None, con=Depends(_con), user=Depends(current_user)):
     ids = _ids(con, cid)
+    if not ids:
+        raise HTTPException(404, f"No hay datos del equipo para la liga {cid}")
     cids = [cid] if cid else None
     E = advanced.equipo_stats(con, ids, cids)
     E["series"] = advanced.series_equipo(con, ids, cids)
     E["distribucion"] = advanced.distribucion_sets(con, ids, cids)
     E["puntos_jornada"] = advanced.puntos_por_jornada(con, ids, cids)
     E["temporadas"] = {t["id"]: t for t in stats.temporadas(con)}
-    # Elo de los jugadores del equipo (calculado con todos los partidos del grupo, todas las temporadas)
+    # Elo de los jugadores del equipo (calculado con todos los partidos del grupo, todas las temporadas),
+    # limitado a la plantilla de la temporada elegida (o la actual): así no aparecen jugadores de otras
+    # temporadas que ya no están en el equipo (p. ej. los que pasaron al B).
     elo = advanced.elo_ratings(con)
-    E["elo"] = [{"jugador": j["jugador"], "key": norm(j["jugador"]), "elo": e["elo"], "hist": e["hist"], "pj": e["pj"], "pg": e["pg"],
+    eq_roster = stats.equipo_seguido(con, cid or stats.temporadas(con)[0]["id"])
+    roster = [norm(j["nombre_completo"]) for j in stats.plantilla(con, eq_roster["id"])] if eq_roster else []
+    keys = roster or [norm(j["jugador"]) for j in E["jugadores"]]  # sin plantilla publicada: los que han jugado
+    E["elo"] = [{"jugador": e["jugador"], "key": k, "elo": e["elo"], "hist": e["hist"], "pj": e["pj"], "pg": e["pg"],
                  "max": max(e["hist"]) if e["hist"] else e["elo"], "min": min(e["hist"]) if e["hist"] else e["elo"]}
-                for j in E["jugadores"] if (e := elo.get(norm(j["jugador"])))]
+                for k in dict.fromkeys(keys) if (e := elo.get(k))]
     E["elo"].sort(key=lambda x: -x["elo"])
     return E
 

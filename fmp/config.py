@@ -12,6 +12,9 @@ BASE_URL = "https://www.fmpadel.com"
 FMP_USER = os.getenv("FMP_USER", "")
 FMP_PASS = os.getenv("FMP_PASS", "")
 FMP_TEAM = os.getenv("FMP_TEAM", "CERCEDILLA A")
+# idEquipo que casan con FMP_TEAM pero NO son nuestro equipo (p. ej. 5154 = 'MVPADEL CERCEDILLA' 2023/24, antes del A/B):
+# nunca se marcan como seguidos, así que esa temporada no aparece en la app.
+FMP_EXCLUIR_EQUIPOS = {int(x) for x in re.split(r"[\s,;]+", os.getenv("FMP_EXCLUIR_EQUIPOS", "")) if x.isdigit()}
 DB_PATH = ROOT / os.getenv("FMP_DB", "data/fmp.db")
 HTML_CACHE = ROOT / "data" / "html_cache"
 
